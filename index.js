@@ -46,7 +46,7 @@ const starReconciliation = async () => {
       for (let company of companies.data) {
         // Run through each period of the company
         const periods = await axiosInstance.get(
-          `/f/${SILVERFIN_FIRM_ID}}/companies/${company.id}/periods`
+          `/f/${SILVERFIN_FIRM_ID}/companies/${company.id}/periods`
         );
 
         for (let period of periods.data) {
