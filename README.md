@@ -1,6 +1,6 @@
 # Overview
 
-This repository contains an example of a node.js script that will star a specific reconciliation in all non-locked period of all companies inside Silverfin
+This repository contains an example of a node.js script that will star a specific reconciliation in all non-locked periods/ledgers of all companies inside Silverfin
 
 Silverfin API documentation: https://developer.silverfin.com/reference/get-started-1
 
