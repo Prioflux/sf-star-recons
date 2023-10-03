@@ -8,8 +8,11 @@ const FormData = require("form-data");
 
 // The SILVERFIN_TOKEN is a valid access token for the Silverfin API that's created through another application like Postman before running the script
 // The SILVERFIN_FIRM_ID is the id of the firm that can be found in the URL of the Silverfin web application (e.g. https://live.getsilverfin.com/f/13827/)
-const { SILVERFIN_TOKEN, SILVERFIN_FIRM_ID, RECONCILIATION_HANDLE } =
+// RECONCILIATION_HANDLES is an comma delimited string of reconciliation handles that should be starred
+const { SILVERFIN_TOKEN, SILVERFIN_FIRM_ID, RECONCILIATION_HANDLES } =
   process.env;
+
+const reconciliationHandles = RECONCILIATION_HANDLES.split(",");
 
 // =======================================
 // END OF DATA TO BE ADDED BY THE USER
@@ -34,6 +37,7 @@ const starReconciliation = async () => {
     let page = 1;
     let perPage = 10;
     let companies = [];
+    let countCompanies = 0;
 
     do {
       companies = await axiosInstance.get(`/f/${SILVERFIN_FIRM_ID}/companies`, {
@@ -44,15 +48,20 @@ const starReconciliation = async () => {
       });
 
       for (let company of companies.data) {
+        console.log("====================================");
+        console.log(`Processing company ${company.name}`);
+        countCompanies++;
         // Run through each period of the company
         const periods = await axiosInstance.get(
           `/f/${SILVERFIN_FIRM_ID}/companies/${company.id}/periods`
         );
 
         for (let period of periods.data) {
+          console.log(`Processing period ${period.end_date}`);
           let reconsPage = 1;
           let reconsPerPage = 30;
           let reconciliations = [];
+          const reconsToStar = [];
 
           // Search through the reconciliations for each period to find the reconciliation with a specific handle
           do {
@@ -66,12 +75,19 @@ const starReconciliation = async () => {
               }
             );
 
-            const starredRecon = reconciliations.data.find(
-              (recon) => recon.handle === RECONCILIATION_HANDLE
-            );
+            reconciliations.data.map((recon) => {
+              if (reconciliationHandles.includes(recon.handle)) {
+                // console.log(recon);
+                reconsToStar.push(recon);
+              }
+            });
 
-            // Star the reconciliation in non-locked ledgers
-            if (starredRecon) {
+            reconsPage++;
+          } while (reconciliations.data.length === reconsPerPage);
+
+          // Star the reconciliation in non-locked ledgers
+          if (reconsToStar.length > 0) {
+            for (let starredRecon of reconsToStar) {
               let data = new FormData();
               data.append("starred", "true");
 
@@ -87,19 +103,20 @@ const starReconciliation = async () => {
               );
 
               console.log(
-                `Starred status of reconciliation '${RECONCILIATION_HANDLE}' in company ${company.name} and period ${period.id} set to ${response.data.starred}`
+                `Set starred status of reconciliation '${starredRecon.handle}' to ${response.data.starred}`
               );
-              console.log("");
-              break;
             }
-
-            reconsPage++;
-          } while (reconciliations.data.length === reconsPerPage);
+          }
+          console.log("");
         }
       }
 
       page++;
     } while (companies.data.length === perPage);
+
+    console.log(
+      `====================================\n${countCompanies} companies processed`
+    );
   } catch (error) {
     console.log("====================================");
     console.log(error);
